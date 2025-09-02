@@ -1,0 +1,5 @@
+land cover classification;;;;10;Cropland, rainfed;CCI_landcover_2000;ESA CCI Land Cover;ESA;2000-v1.6.1;300m;1998-2002;http://www.esa-landcover-cci.org/;
+land cover classification;;;;10;Cropland, rainfed;CCI_landcover_2005;ESA CCI Land Cover;ESA;2005-v1.6.1;300m;2003-2007;http://www.esa-landcover-cci.org/;
+land cover classification;;;;10;Cropland, rainfed;CCI_landcover_2010;ESA CCI Land Cover;ESA;2010-v1.6.1;300m;2008-2012;http://www.esa-landcover-cci.org/;
+climate classification;;;;Cfb;Temperate - Without dry season - Warm Summer;koeppen_geiger_2007;Koeppen-Geiger Climate Classification;None;Peel2007;0.1°;None;http://www.hydrol-earth-syst-sci.net/11/1633/2007/;
+climate classification;;;;Cfb;Temperate - Without dry season - Warm Summer;koeppen_geiger_2017;Version 2017 Koeppen-Geiger Climate Classification;None;Rubel2017;0.08°;None;http://koeppen-geiger.vu-wien.ac.at/pdf/Paper_2017.pdf;

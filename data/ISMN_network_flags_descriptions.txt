@@ -1,0 +1,121 @@
+network_abbr;orig_flag_name;orig_flag_description
+BNZ-LTER;E;EstimatedMissing
+BNZ-LTER;G;Good
+BNZ-LTER;Q;Questionable
+BNZ-LTER;M;Missing
+COSMOS-UK;4;Too few sample - Data with too few half hourly samples.For variables that are a sum or average of numerous continuous readings in the preceding half hour period; if less than a third of these readings are missing the measurement is considered unreliable and data are removed.
+COSMOS-UK;1;Missing - No data received from logger.
+COSMOS-UK;0;Good
+COSMOS-UK;E;Estimated. Where the value contains some degree of uncertainty. This can be for one of two reasons:1. The value was aggregated with less than a full set of data. For example, a daily mean temperature where some of the sub daily values were missing.2. The value was aggregated or derived with some degree of infilled data. For example, if net radiation (RN) was calculated using an infilled SWIN value.
+COSMOS-UK;I;Infilled. Where missing data has been filled in directly using an infill method. See Section 5 for more details on infilling.
+COSMOS-UK;U;Unchecked. Where data had had no quality control (QC).Note, data that has been derived from QC’d data, e.g. net radiation, is not itself QC’d, however is still consider checked. The only truly unchecked data is the daily greenness proportion (GCC).
+COSMOS-UK;M;Missing. Where data has been lost and not infilled.Note, for snow parameters, e.g. SNOW_DEPTH, the values are only given on snow days. This means there is no data on non-snow days, but it is not considered missing and will not have the M flag.
+COSMOS-UK;1024;Error codes - Data where the logger programme has assigned an error code value due to a sensor/programme fault.When there is a fault with the sensor for some variables the logger programme can record a value of 7999.
+COSMOS-UK;512;Spike - Data that are greater than a threshold value smaller/larger than the neighbouring values.If a value is greater than a certain threshold away from its neighbouring values this is removed.
+COSMOS-UK;128;Secondary variable - Data dependant on another variable and the other variable is incorrect.Some measurements are dependent on the measurements of another variable being reasonable. For example measurements of the components of radiation are not reliable when the body temperature (of the radiometer) measurement is out of the acceptable range. This test will remove values from the dependent variables if the main variable is not correct.
+COSMOS-UK;64;Out of range - Data that are outside an acceptable range for that variable.Each variable measured at each site has a minimum and maximum value set. If the measurement of this particular variable goes out of this range it will be removed.
+COSMOS-UK;32;Diagnostic flag - Data that has been assigned a diagnostic flag by the instrument.
+COSMOS-UK;16;Sensor fault - Data associated with a sensor that has a known fault. These are registered manually by the operations team.
+COSMOS-UK;8;Low power - Data recorded where battery voltage is low.Low battery power can mean measurements are missing or unreliable. If the battery pack voltage goes below 11V the associated data will be removed.
+COSMOS-UK;2;Zero data - Data equal to zero where this is not a possible value.For certain variables missing data are marked using a zero.  For variables where this is true any zero values are removed as these are assumed to be missing.
+DWD;3;checked, value is plausible
+DWD;0;not checked
+DWD;-9999;no flag
+DWD;2;checked, value is not plausible
+DWD;1;checked, value is wrong
+IMA_CAN1;C;Checked manually
+IMA_CAN1;U;Unchecked
+KIHS_CMC;G;Good
+KIHS_CMC;M;Missing
+KIHS_SMC;G;Good
+KIHS_SMC;M;Missing
+MOL-RAO;I;Interpolated
+MOL-RAO;G;Good
+MOL-RAO;D;Dubious
+MOL-RAO;U;Unchecked
+MOL-RAO;B;Bad
+MOL-RAO;M;Missing
+RISMA;Frozen_soil;activated if the soil temperature is below zero degrees Celsius and indicates that the soil moisture readings should not be used
+RISMA;STC_averaged_using_sensor_1_and_2-Frozen_soil;
+RISMA;STC_averaged_using_sensor_1_and_2-OK;
+RISMA;STC_averaged_using_1_and_2;activated when hydra probe sensor #3 does not measure soil temperature. The average soil temperature from sensor #1 and 2 is used instead. Occurs at some ON stations
+RISMA;CON_ge_0.2;activated when temperature corrected soil conductivity (CON) is equal to or larger than 0.2 S/m
+RISMA;Out_of_WFV_average_range;activated if Soil Moisture value (m3/m3) is more than 10% different from the average, ie if there are sudden changes in soil moisture (these could be due to rain events or data noise; the flag is there to assist in interpretation along with rain gauge data)
+RISMA;OK;OK
+RISMA;DLT_ge_1.5;activated when the Dielectric Loss Tangent (DLT = Imaginary Dielectric Permittivity / RealDielectric Permittivity) is equal to or larger than 1.5
+RISMA;Out_of_RDC_range;activated when Real Dielectric Permittivity (RDC) is less than 2.4
+RISMA;NA;NA
+RISMA;Out_of_WFV_range;activated if the Soil Moisture (m3/m3) is less than 0.02 or greater than 0.60
+SCAN;K;Internal Estimate: Data value is revised using an estimate from other sensors or stations. Does not apply to data that are smoothed to adjust for minor sensor fluctuations which would receive the ‘E’ flag
+SCAN;N;No Assigned Profile: There is no existing delta/range profile for the data value, or the profiles are inactive. After data review, the N flags should be converted to V for valid, S for suspect, or E/K for an updated 
+SCAN;None;no flag
+SCAN;S;Suspect: Data value is outside the limits of the stored delta/range profile.
+SCAN;E;Edited: Data value is revised to correct for signal noise on an otherwise functioning sensor.
+SCAN;V;Valid: Data value is within the limits of the Storage delta/range profile or determined to be valid through human review.
+SCAN;C;Correction: Assigned when a different multiplier or equation is applied to the sensor voltage (e.g. correcting for wrong transducer size, or unbiased temperature data).
+SCAN;M;Missing: Assigned for to a null value.
+SNOTEL;M;Missing: Assigned for to a null value.
+SNOTEL;E;Edited: Data value is revised to correct for signal noise on an otherwise functioning sensor.
+SNOTEL;N;No Assigned Profile: There is no existing delta/range profile for the data value, or the profiles are inactive. After data review, the N flags should be converted to V for valid, S for suspect, or E/K for an updated 
+SNOTEL;K;Internal Estimate: Data value is revised using an estimate from other sensors or stations. Does not apply to data that are smoothed to adjust for minor sensor fluctuations which would receive the ‘E’ flag
+SNOTEL;S;Suspect: Data value is outside the limits of the stored delta/range profile.
+SNOTEL;None;no flag
+SNOTEL;V;Valid: Data value is within the limits of the Storage delta/range profile or determined to be valid through human review.
+SNOTEL;C;Correction: Assigned when a different multiplier or equation is applied to the sensor voltage (e.g. correcting for wrong transducer size, or unbiased temperature data).
+SOILSCAPE;5;(C) Exceeds field size (Negative SM values, fixed at 0.1 percent)
+SOILSCAPE;4;(M) Missing
+SOILSCAPE;0;(G) Good (Standard for all data)
+SOILSCAPE;2;(I) Interpolated / Estimated
+SOILSCAPE;3;(B) Bad (Manually flagged)
+SOILSCAPE;1;(D) Dubious (Automatically flagged, spikes etc.)
+TAHMO;2;Suspect
+TAHMO;1;Good
+TAHMO;3;Doubtful
+TAHMO;4;Erroneous
+TERENO;4_3033;approved upload - suspicious - noisy data
+TERENO;4_3014;approved upload - suspicious_unknown
+TERENO;4_4011;approved upload - baddata - min
+TERENO;4_2026;approved upload - ok - moderate quality
+TERENO;noData;no Data
+TERENO;4_3012;approved upload - suspicious - max
+TERENO;4_18;data level 2c "approved upload", generic flag "bad data", qualifierid "isolated spike"
+TERENO;4_4024;approved upload - baddata - bad quality
+TERENO;4_4023;approved upload - baddata - frozen
+TERENO;4_1001;approved upload - unevaluated - unevaluated
+TERENO;4_4012;approved upload - baddata - max
+TERENO;nodata;no Data
+TERENO;4_3017;approved upload - suspicious - missing
+TERENO;4_3048;approved upload - suspicious - inconsistent time period
+TERENO;4_3020;approved upload - suspicious - unplausible variation
+TERENO;4_4019;approved upload - baddata - isolated spike
+TERENO;None;no Data
+TERENO;4_4036;approved upload - baddata - technical disturbance
+TERENO;4_4013;approved upload - baddata - irregular
+TERENO;4_4020;approved upload - baddata - unplausible variation
+TERENO;4_4058;approved upload - baddata - max precipitation 2d
+TERENO;4_4018;approved upload - baddata - out of order
+TERENO;4_3011;approved upload - suspicious - min
+TERENO;4_4033;approved upload - baddata - noisy data
+TERENO;4_2002;approved upload - ok - ok
+TERENO;4_4021;approved upload - baddata - data transfer disturbed
+TERENO;4_3023;approved upload - suspicious - frozen
+TERENO;4_4059;approved upload - baddata - max preciptiation 5d
+TERENO;4_3037;approved upload - suspicious - maintenance disturbance
+TERENO;4_15;data level 2c "approved upload", generic flag "bad data", qualifierid "irregular data (NaN, infinite)"
+TERENO;4_4022;approved upload - baddata - data not plausible
+TERENO;4_2025;approved upload - ok - good quality
+TERENO;4_2;data level 2c "approved upload", generic flag "good or acceptable data", qualified "good or acceptable data"
+TERENO;4_19;data level 2c "approved upload", generic flag "bad data", qualifierid "sensor is out of order or delivers unplausible or meaningless data"
+TERENO;4_3036;approved upload - suspicious - technical disturbance
+TERENO;4_3044;approved upload - suspicious - no data change
+TWENTE;7;saturated plateau
+TWENTE;6;constant low values following negative breaks
+TWENTE;5;soil moisture jump detected using a spectrum based approach
+TWENTE;4;soil moisture drop detected using a spectrum based approach
+TWENTE;3;spike detected based on variance/mean, soil moisture change and second derivative criteria
+TWENTE;2;soil moisture above 0.7 m3/m3  or soil temperature above 50 oC
+TWENTE;1;soil moisture below 0.0 m3/m3  or soil temperature below -20 oC
+TWENTE;0;operates nominal
+TWENTE;9;data is not valid
+USCRN;3;erroneous
+USCRN;0;good
