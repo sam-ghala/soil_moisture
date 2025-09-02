@@ -1,3 +1,4 @@
+# using StatsPlots
 """
     plot_raw(df::DataFrame) -> Plots.Plot
 
@@ -39,9 +40,6 @@ and precipitation data in column "p_-2.000"
 - `Plots.Plot`: Plot object with precipitation and 0.050m soil moisture
 """
 function plot_rainfall(df::DataFrame)
-    """
-    Plot raw rainfall with 0.05 soil moisure depth
-    """
     plt = plot(; size = (900, 400), xlabel = "Time", ylabel= "θ (m^3/m^3)",
                 title = "Rainfall and 0.05m Soil Moisture over Time")
     plot!(plt, df.timestamp, df[!, 3], label = String("0.05"), color = "saddlebrown",lw=1)
@@ -55,24 +53,122 @@ function plot_rainfall(df::DataFrame)
     return plt
 end
 
-function plot_boxplot(df::DataFrame)
-     
-end
+function plot_box(df::DataFrame, cols::Vector{String}, xlab::String, ylab::String)
+    plt = plot(ylabel=ylab, 
+               title=ylab,
+               size=(900, 400))
 
-function plot_soil_moisture(df::DataFrame)
+    colors = reverse(palette(:viridis, length(cols))) # :viridis :plasma :inferno
+    for (i, col) in enumerate(cols)
+        boxplot!(plt, [i], df[!, col], label=col, color = colors[i], fillalpha=0.7)
+    end
     
+    plot!(plt, xticks=(1:length(cols), cols), legend=false)
+    display(plt)
+    return plt
 end
 
-function plot_soil_temp(df::DataFrame)
+function plot_violin(df::DataFrame, cols::Vector{String}, xlab::String, ylab::String)
+    plt = plot(ylabel=ylab, 
+               title=ylab,
+               size=(900, 400))
 
+    colors = reverse(palette(:viridis, length(cols))) # :viridis :plasma :inferno
+    for (i, col) in enumerate(cols)
+        violin!(plt, [i], df[!, col], label=col, color = colors[i], fillalpha=0.7)
+    end
+    
+    plot!(plt, xticks=(1:length(cols), cols), legend=false)
+    display(plt)
+    return plt
+end
+
+function plot_line(df::DataFrame, cols::Vector{String}, xlab::String, ylab::String)
+    plt = plot(size=(900, 400), 
+              xlabel=xlab, 
+              ylabel=ylab,
+              title=ylab * " vs. " * xlab)
+    
+    colors = reverse(palette(:viridis, length(cols))) # :viridis :plasma :inferno
+    for (i, col) in enumerate(cols)
+        plot!(plt, df.timestamp, df[!, col], 
+              label=col, color=colors[i], lw=2)
+    end
+    display(plt)
+    return plt
+end
+
+function plot_bar(df::DataFrame, cols::Vector{String}, xlab::String, ylab::String)
+    plt = plot(size=(900, 400), 
+              xlabel=xlab, 
+              ylabel=ylab,
+              title=ylab * "  vs. " * xlab)
+    
+    for col in cols
+        bar!(plt, df.timestamp, df[!, col], 
+             label=col, alpha=0.7)
+    end
+    display(plt)
+    return plt
+end
+"""
+   basic_plots(df::DataFrame) -> Vector{Plots.Plot}
+
+Generate multiple plot types for each variable group in a DataFrame.
+
+Automatically groups DataFrame columns by variable type (sm, ts, ta, p) and creates
+line, box, and violin plots for each group. Some plot types are skipped for certain
+variables (e.g., no box plots for air temperature or precipitation).
+
+# Arguments
+- `df::DataFrame`: DataFrame with timestamp column (first) and sensor data columns
+
+# Returns
+- `Vector{Plots.Plot}`: Collection of plots for all variable types and plot combinations
+"""
+function basic_plots(df::DataFrame) # returns Vector{Plots.Plot}
+    var_groups = Dict{String, Vector{String}}()
+    for col in names(df)[2:end] 
+        var_type = split(col, r"[_\d]")[1]
+        if !haskey(var_groups, var_type)
+            var_groups[var_type] = String[]
+        end
+        push!(var_groups[var_type], col)
+    end
+    println(var_groups)
+    haskey(var_groups, "sm") && (var_groups["Soil Moisture (m³/m³)"] = pop!(var_groups, "sm"))
+    # var_groups["Soil Moisture (m^3/m^3)"] = pop!(var_groups, "sm")
+    haskey(var_groups, "ta") && (var_groups["Air Temperature (°C)"] = pop!(var_groups, "ta"))
+    haskey(var_groups, "ts") && (var_groups["Soil Temperature (°C)"] = pop!(var_groups, "ts"))
+    haskey(var_groups, "p") && (var_groups["Precipitation (mm)"] = pop!(var_groups, "p"))
+
+    plots = []
+    var_names = keys(var_groups)
+
+    funcs = Dict(
+        "line" => plot_line,
+        "box" => plot_box, 
+        # "bar" => plot_bar,
+        "violin" => plot_violin)
+    skip = [("box", "Air Temperature (°C)"), ("bar", "Air Temperature (°C)"), 
+            ("box", "Precipitation (m)"), ("bar", "Precipitation (m)"), 
+            ("violin", "Precipitation (m)"), ("violin", "Air Temperature (°C)")]
+    for (name, cols) in var_groups
+        for (n, f) in funcs
+            if (n,name) in skip
+                continue
+            end
+            push!(plots, f(df, cols, "Time", name))
+        end
+    end
+    # damn we need some more plots but above code is worth it 
+    return plots
 end
 
 # Example usage
-
-station_dir = "data/XMS-CAT/Pessonada"
-# station_dir = "data/test_station"
-df = load_station_data(station_dir)
-
-plot_r = plot_raw(df)
-plot_p = plot_rainfall(df)
-
+#
+# station_dir = "data/XMS-CAT/Pessonada" # find a station
+# df = load_station_data(station_dir)
+# plots = basic_plots(df)
+# plot_r = plot_raw(df)
+# plot_p = plot_rainfall(df)

@@ -3,14 +3,6 @@ using SoilMoisture
 # using DataFrames, Dates
 
 @testset "list_station_files" begin
-    # dir = "data/test_station"
-    # non_stm = "data/test_station/XMS-CAT_XMS-CAT_Pessonada_static_variables.csv"
-    # ex_stm = "data/test_station/XMS-CAT_XMS-CAT_Pessonada_sm_0.200000_0.200000_CS655_20240825_20250825.stm"
-    # #
-    # dir = "/Users/samghalayini/agriculture/soil_moisture/data/test_station"
-    # non_stm = "/Users/samghalayini/agriculture/soil_moisture/ata/test_station/XMS-CAT_XMS-CAT_Pessonada_static_variables.csv"
-    # ex_stm = "/Users/samghalayini/agriculture/soil_moisture/data/test_station/XMS-CAT_XMS-CAT_Pessonada_sm_0.200000_0.200000_CS655_20240825_20250825.stm"
-    #
     dir = joinpath(@__DIR__, "..", "data", "test_station")
     non_stm = joinpath(@__DIR__, "..", "data", "test_station", "XMS-CAT_XMS-CAT_Pessonada_static_variables.csv")
     ex_stm = joinpath(@__DIR__, "..", "data", "test_station", "XMS-CAT_XMS-CAT_Pessonada_sm_0.200000_0.200000_CS655_20240825_20250825.stm")
