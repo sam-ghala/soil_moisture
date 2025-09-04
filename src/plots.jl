@@ -1,4 +1,3 @@
-# using StatsPlots
 """
     plot_raw(df::DataFrame) -> Plots.Plot
 
@@ -111,8 +110,9 @@ function plot_bar(df::DataFrame, cols::Vector{String}, xlab::String, ylab::Strin
     display(plt)
     return plt
 end
+
 """
-   basic_plots(df::DataFrame) -> Vector{Plots.Plot}
+    basic_plots(df::DataFrame) -> Vector{Plots.Plot}
 
 Generate multiple plot types for each variable group in a DataFrame.
 
@@ -167,8 +167,103 @@ end
 
 # Example usage
 #
-# station_dir = "data/XMS-CAT/Pessonada" # find a station
-# df = load_station_data(station_dir)
+station_dir = "data/XMS-CAT/Pessonada" # find a station
+df = load_station_data(station_dir)
 # plots = basic_plots(df)
 # plot_r = plot_raw(df)
 # plot_p = plot_rainfall(df)
+
+# More fun plots =>
+
+function soil_params(soil_type::String)
+    param_dict = Dict(
+    "sand" => (θr=0.045, θs=0.43, α=14.5, n=2.68, m=0.627),
+    "loam" => (θr=0.078, θs=0.43, α=3.6, n=1.56, m=0.359),
+    "clay" => (θr=0.068, θs=0.38, α=0.8, n=1.09, m=0.083),
+    "silt" => (θr=0.034, θs=0.46, α=1.6, n=1.37, m=0.270)
+    )
+    if haskey(param_dict, lowercase(soil_type))
+        return param_dict[lowercase(soil_type)]
+    else
+        error("Unknown soil type: $soil_type. Available: $(keys(param_dict))")
+    end
+end
+
+"""
+# Arguments  
+- `θ::Vector{Float64}`: Volumetric water content values [m³/m³]
+- `params::NamedTuple`: Van Genuchten parameters with fields:
+- `θr`: Residual water content [m³/m³]
+- `θs`: Saturated water content [m³/m³] 
+- `α`: Inverse of air entry pressure [1/m]
+- `n`: Pore size distribution parameter [-]
+- `m`: Shape parameter [-] (typically m = 1 - 1/n)
+# 
+function swr_van_Genuchten(θ:: Vector{Union{Missing,Float64}}, p::NamedTuple{(:θr, :θs, :α, :n, :m), Tuple{Float64, Float64, Float64, Float64, Float64}})
+    θr, θs, α, n, m = p.θr, p.θs, p.α, p.n, p.m
+    θ_clean = filter(!ismissing, θ)
+    θ_clean = Float64.(θ_clean)
+    θ_valid = clamp.(θ_clean, θr + 1e-6, θs - 1e-6)
+
+    # Calculate effective saturation
+    θe = @. (θ_valid - θr) / (θs - θr)
+    θe = clamp.(θe, 1e-6, 1 - 1e-6)
+
+    # van Genuchten equation
+    ψ = @. 1/α * (θe^(-1/m) - 1)^(1/n)
+    return 
+end
+"""
+function plot_soil_retention_curve()
+    soil_types = ["sand", "loam", "clay", "silt"] 
+    colors = reverse(palette(:viridis, 4))
+    
+    plt = plot(xlabel="Pressure head, -ψ", 
+              ylabel="Water content, θ",
+              xscale=:log10,
+              xlims=(0.01, 1000),
+              ylims=(0, 0.45),
+              title="Water retention curve",
+              size=(600, 400))
+    
+    for (i, soil) in enumerate(soil_types)
+        params = soil_params(soil)
+
+        # pressure head
+        ψ_range = 10 .^ range(log10(0.01), log10(1000), length=200)
+        
+        # get θ from ψ with inverse van Genuchten
+        θ = @. params.θr + (params.θs - params.θr) * (1 + (params.α * ψ_range)^params.n)^(-params.m)
+        
+        plot!(plt, ψ_range, θ, 
+              label=soil, 
+              color=colors[i], 
+              linewidth=2)
+    end
+    # display(plt)
+    return plt
+end
+
+# plot_soil_retention_curve()
+
+"""
+Hydraulic Conductivity Function
+
+Args: θ or ψ range, soil parameters
+Description: Shows how water flow capacity changes with moisture content
+X-axis: θ [m³/m³] or ψ [m], Y-axis: K [m/s]
+Plot: line, log scale
+Purpose: Reference - understand flow vs saturation relationship
+"""
+
+function hydraulic_conductivity()
+    
+    plt = plot(xlabel="θ [m³/m³]", 
+            ylabel="K [m/s]",
+            xscale=:log10,
+            xlims=(0.01, 1000),
+            ylims=(0, 0.45),
+            title="Hydraulic Conductivity",
+            size=(600, 400))
+    
+end

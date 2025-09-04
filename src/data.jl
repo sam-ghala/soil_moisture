@@ -1,20 +1,3 @@
-# using CSV, DataFrames, Dates, Glob, Plots, PrettyTables, Printf
-
-"""
-To-Do:
-- repeat test, code, refactor for plots 
-- same for data processing
-- test, code, refactor for model 
-- test, code, refactor for training
-- test, code, refactor for prediction
-- test, code, refactor for evaluation
-- test, code, refactor for visualization
-- Create a package
-- Create documentation
-- What do I need for PINN training? 
-- Create digital twin structure and components for everything soil moisture
-"""
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 """
     list_station_files(station_dir::AbstractString) -> Vector{String}
 
