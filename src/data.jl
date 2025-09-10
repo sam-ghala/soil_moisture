@@ -110,6 +110,20 @@ function merge_station_data(files::AbstractVector{<:AbstractString}, col_names::
     return df
 end
 
+function soil_params(soil_type::String)
+    param_dict = Dict(
+        "sand" => (θr=0.045, θs=0.43, α=14.5, n=2.68, m=0.627, K_sat=5.8e-5),
+        "loam" => (θr=0.078, θs=0.43, α=3.6, n=1.56, m=0.359, K_sat= 2.9e-6),
+        "clay" => (θr=0.068, θs=0.38, α=0.8, n=1.09, m=0.083, K_sat=5.6e-7),
+        "silt" => (θr=0.034, θs=0.46, α=1.6, n=1.37, m=0.270, K_sat=6.9e-7)
+    )
+    if haskey(param_dict, lowercase(soil_type))
+        return param_dict[lowercase(soil_type)]
+    else
+        error("Unknown soil type: $soil_type. Available: $(keys(param_dict))")
+    end
+end
+
 """
     load_station_data(station_dir::AbstractString) -> DataFrame
 
@@ -135,7 +149,34 @@ function load_station_data(station_dir::AbstractString)::DataFrame
     return df
 end
 
+function avg_sm!(df::DataFrame)
+    # df[!, :avg_sm] = mean.(eachrow(df[!, [:"sm_0.050", :"sm_0.200", :"sm_0.500", :"sm_1.000"]]))
+    cols = [:"sm_0.050", :"sm_0.200", :"sm_0.500", :"sm_1.000"]
+    df[!, :avg_sm] = sum.(eachrow(df[!, cols])) ./ length(cols)
+end
+
+function avg_ts!(df::DataFrame)
+    cols = [:"ts_0.050", :"ts_0.200", :"ts_0.500", :"ts_1.000"]
+    df[!, :avg_ts] = sum.(eachrow(df[!, cols])) ./ length(cols)
+end
+
+function sm_grad!(df::DataFrame)
+    cols = [:"sm_0.050", :"sm_0.200", :"sm_0.500", :"sm_1.000"]
+    df[!, :grad_05_20] = (df[!,cols[1]] - df[!,cols[2]]) / (0.200 - 0.050)
+    df[!, :grad_20_50] = (df[!,cols[2]] - df[!,cols[3]]) / (0.500 - 0.200)
+    df[!, :grad_50_1] = (df[!,cols[3]] - df[!,cols[4]]) / (1.000 - 0.500)
+end
+
+function preprocess(station_dir::AbstractString)
+    df = load_station_data(station_dir)
+    avg_sm!(df)
+    avg_ts!(df)
+    sm_grad!(df)
+    return df
+end
+
 # Example usage:
 # station_dir = "data/XMS-CAT/Pessonada"
 # station_dir = "data/test_station"
-# df = load_station_data(station_dir)e
+# df = load_station_data(station_dir)
+# df = preprocess(station_dir)
