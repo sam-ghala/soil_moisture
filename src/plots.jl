@@ -17,10 +17,10 @@ function plot_raw(df::DataFrame)
     cmap = cgrad(:viridis) # :viridis :plasma :inferno
     n = length(depth_cols)
     cols =reverse([get(cmap, (i-1)/(n-1)) for i in 1:n])
-    plt = plot(; size = (900,400), xlabel = "Time", ylabel = "",
+    plt = Plots.plot(; size = (900,400), xlabel = "Time", ylabel = "",
                 title = "Raw data")
     for (i,col) in enumerate(depth_cols)
-        plot!(plt, df.timestamp, df[!, col], label = String(col), color = cols[i],lw=2)
+        Plots.plot!(plt, df.timestamp, df[!, col], label = String(col), color = cols[i],lw=2)
     end    
     display(plt)
     return plt
@@ -39,10 +39,10 @@ and precipitation data in column "p_-2.000"
 - `Plots.Plot`: Plot object with precipitation and 0.050m soil moisture
 """
 function plot_rainfall(df::DataFrame)
-    plt = plot(; size = (900, 400), xlabel = "Time", ylabel= "θ (m^3/m^3)",
+    plt = Plots.plot(; size = (900, 400), xlabel = "Time", ylabel= "θ (m^3/m^3)",
                 title = "Rainfall and 0.05m Soil Moisture over Time")
-    plot!(plt, df.timestamp, df[!, 3], label = String("0.05"), color = "saddlebrown",lw=1)
-    bar!(twinx(plt), df.timestamp, df[!, Symbol("p_-2.000")]; 
+    Plots.plot!(plt, df.timestamp, df[!, 3], label = String("0.05"), color = "saddlebrown",lw=1)
+    Plots.bar!(twinx(plt), df.timestamp, df[!, Symbol("p_-2.000")]; 
         bar_width = 1,
         linecolor = "dodgerblue2",
         fillalpha = 1,
@@ -53,44 +53,44 @@ function plot_rainfall(df::DataFrame)
 end
 
 function plot_box(df::DataFrame, cols::Vector{String}, xlab::String, ylab::String)
-    plt = plot(ylabel=ylab, 
+    plt = Plots.plot(ylabel=ylab, 
                title=ylab,
                size=(900, 400))
 
     colors = reverse(palette(:viridis, length(cols))) # :viridis :plasma :inferno
     for (i, col) in enumerate(cols)
-        boxplot!(plt, [i], df[!, col], label=col, color = colors[i], fillalpha=0.7)
+        Plots.boxplot!(plt, [i], df[!, col], label=col, color = colors[i], fillalpha=0.7)
     end
     
-    plot!(plt, xticks=(1:length(cols), cols), legend=false)
+    Plots.plot!(plt, xticks=(1:length(cols), cols), legend=false)
     display(plt)
     return plt
 end
 
 function plot_violin(df::DataFrame, cols::Vector{String}, xlab::String, ylab::String)
-    plt = plot(ylabel=ylab, 
+    plt = Plots.plot(ylabel=ylab, 
                title=ylab,
                size=(900, 400))
 
     colors = reverse(palette(:viridis, length(cols))) # :viridis :plasma :inferno
     for (i, col) in enumerate(cols)
-        violin!(plt, [i], df[!, col], label=col, color = colors[i], fillalpha=0.7)
+        Plots.violin!(plt, [i], df[!, col], label=col, color = colors[i], fillalpha=0.7)
     end
     
-    plot!(plt, xticks=(1:length(cols), cols), legend=false)
+    Plots.plot!(plt, xticks=(1:length(cols), cols), legend=false)
     display(plt)
     return plt
 end
 
 function plot_line(df::DataFrame, cols::Vector{String}, xlab::String, ylab::String)
-    plt = plot(size=(900, 400), 
+    plt = Plots.plot(size=(900, 400), 
               xlabel=xlab, 
               ylabel=ylab,
               title=ylab * " vs. " * xlab)
     
     colors = reverse(palette(:viridis, length(cols))) # :viridis :plasma :inferno
     for (i, col) in enumerate(cols)
-        plot!(plt, df.timestamp, df[!, col], 
+        Plots.plot!(plt, df.timestamp, df[!, col], 
               label=col, color=colors[i], lw=2)
     end
     display(plt)
@@ -119,7 +119,7 @@ function basic_plots(df::DataFrame) # returns Vector{Plots.Plot}
     haskey(var_groups, "ts") && (var_groups["Soil Temperature (°C)"] = pop!(var_groups, "ts"))
     haskey(var_groups, "p") && (var_groups["Precipitation (mm)"] = pop!(var_groups, "p"))
 
-    plots = []
+    plts = []
     # var_names = keys(var_groups)
     # print(var_names)
     funcs = Dict(
@@ -127,27 +127,27 @@ function basic_plots(df::DataFrame) # returns Vector{Plots.Plot}
         "box" => plot_box, 
         "violin" => plot_violin)
     skip = [("box", "Air Temperature (°C)"), ("bar", "Air Temperature (°C)"), 
-            ("box", "Precipitation (m)"), ("bar", "Precipitation (m)"), 
-            ("violin", "Precipitation (m)"), ("violin", "Air Temperature (°C)")]
+            ("box", "Precipitation (mm)"), ("bar", "Precipitation (mm)"), 
+            ("violin", "Precipitation (mm)"), ("violin", "Air Temperature (°C)")]
     for (name, cols) in var_groups
         for (n, f) in funcs
             if (n,name) in skip
                 continue
             end
-            push!(plots, f(df, cols, "Time", name))
+            push!(plts, f(df, cols, "Time", name))
         end
     end
-    push!(plots, plot_line(df, ["avg_sm"], "Time", "Average Soil Moisture"))
-    push!(plots, plot_line(df, ["avg_ts"], "Time", "Average Soil Temperature"))
+    push!(plts, plot_line(df, ["avg_sm"], "Time", "Average Soil Moisture"))
+    push!(plts, plot_line(df, ["avg_ts"], "Time", "Average Soil Temperature"))
     # damn we need some more plots but above code is worth it 
-    return plots
+    return plts
 end
 
 function plot_soil_retention_curve()
     soil_types = ["sand", "loam", "clay", "silt"] 
     colors = reverse(palette(:viridis, 4))
     
-    plt = plot(xlabel="Pressure head, ψ", 
+    plt = Plots.plot(xlabel="Pressure head, ψ", 
               ylabel="Water content, θ",
               xscale=:log10,
               xlims=(0.01, 1000),
@@ -164,7 +164,7 @@ function plot_soil_retention_curve()
         # get θ from ψ with inverse van Genuchten
         θ = @. params.θr + (params.θs - params.θr) * (1 + (params.α * ψ_range)^params.n)^(-params.m)
         
-        plot!(plt, ψ_range, θ, 
+        Plots.plot!(plt, ψ_range, θ, 
               label=soil, 
               color=colors[i], 
               linewidth=2)
@@ -177,7 +177,7 @@ function plot_hydraulic_conductivity()
     soil_types = ["sand", "loam", "clay", "silt"] 
     colors = reverse(palette(:viridis, 4))
     
-    plt = plot(xlabel="Pressure head, ψ", 
+    plt = Plots.plot(xlabel="Pressure head, ψ", 
             ylabel="K [m/s]",
             xscale=:log10,
             yscale=:log10,
@@ -198,7 +198,7 @@ function plot_hydraulic_conductivity()
         #
         K_θ = @. K_sat * θe^0.5 * (1 - (1 - θe^(1/m))^m)^2
 
-        plot!(plt, ψ_range, K_θ, 
+        Plots.plot!(plt, ψ_range, K_θ, 
               label=soil, 
               color=colors[i], 
               linewidth=2)
@@ -213,9 +213,11 @@ end
 
 # Example usage
 #
-# station_dir = "data/XMS-CAT/Pessonada" # find a station
-# df = preprocess(station_dir)
-# plots = basic_plots(df)
+station_dir = "data/XMS-CAT/Pessonada" # find a station
+# station_dir = "data/XMS-CAT/Garriguella"
+# station_dir = "data/XMS-CAT/LosCoscolls"
+df = preprocess(station_dir)
+plots = basic_plots(df)
 # plot_r = plot_raw(df)
 # plot_p = plot_rainfall(df)
 

@@ -1,6 +1,3 @@
-rng = Random.default_rng()
-Random.seed!(rng, 42)
-
 function θ_to_ψ(θ, p)
     θr, θs, α, n, m = p.θr, p.θs, p.α, p.n, p.m
     θe = @. (θ - θr) / (θs - θr)
@@ -194,11 +191,12 @@ end
 
 # Run 
 # sim_explicit(n_steps, Δt, n_nodes, Δz, start_moisture, rain_time, p_rate)
-@time sim_explicit(100000, 0.001, 100, 0.01, 0.29, 1/2, 1e-5)
-@time sim_implicit(10000, 0.01, 100, 0.01, 0.29, 1/2, 1e-5)
+# @time sim_explicit(100000, 0.001, 100, 0.01, 0.29, 1/2, 1e-5)
+# @time sim_implicit(10000, 0.01, 100, 0.01, 0.29, 1/2, 1e-5)
 
 """
 Light rain: p_rate = 1e-6 m/s (3.6 mm/hr)
 Heavy rain: p_rate = 1e-5 m/s (36 mm/hr)
 Storm event: p_rate = 3e-5 m/s (108 mm/hr)
 """
+
