@@ -1,6 +1,7 @@
 Random.seed!(42)
+# addprocs(4)  # Use multiple cores
 
-function visualize_solution(phi, res, duration)
+function plot_solution(phi, res, duration)
     z_grid = 0.0:0.01:1.0
     t_grid = 0.0:(duration/200):duration
     # t_grid = 0.0:1000:86400.0
@@ -9,13 +10,43 @@ function visualize_solution(phi, res, duration)
     display(plt)
 end
 
-function visualize_pred_profile(depths,moisture)
+function plot_pred_profile(depths,moisture)
     plt = Plots.plot(size=(900, 400), 
               xlabel="Depth", 
               ylabel="Moisture",
               title="Moisture vs. Depth")
     Plots.plot!(plt, depths, moisture, 
               label="Moisture Profile", color=:blue, lw=2)
+    display(plt)
+end
+
+function plot_moisture_comparison(phi, res, df, date, duration)
+    # plot avg of real soil data, and plot avg or predicted soil data
+    depths = [0.05, 0.20, 0.50, 1.0]
+    depth_labels = ["sm_0.050", "sm_0.200", "sm_0.500", "sm_1.000"]
+    time_points = 0:3600:duration
+    colors = reverse(palette(:viridis, 4))
+    # get sensor data for date range
+    end_date = date + Second(duration)
+    sensor_data = filter(row -> date <= row.timestamp <= end_date, df)
+    sm_data = []
+    # plot
+    plt = plot(title = "Predicted vs. Observed Moisture Data",
+                xlabel = "Time (hours)",
+                ylabel = "Moisture (m^3/m^3)",
+                legend=false)
+    hours = time_points ./ 3600
+    # plot sensor data
+    for i in 1:4
+        plot!(plt, hours, sensor_data[!, Symbol(depth_labels[i])], label=depth_labels[i], color=colors[i], lw=2)
+    end
+    # plot predicted data
+    for i in 1:4
+        pred_moisture = [first(phi([depths[i], t], res.u)) for t in time_points]
+        plot!(plt, hours, pred_moisture, 
+              label="Predicted $(depths[i])m", color=colors[i], lw=2, 
+              linestyle=:dash, marker=:circle, markersize=3)
+    end
     display(plt)
 end
 
@@ -36,21 +67,6 @@ function D_eff(θ_val)
     return K_val * (1.0 + (θ_val - 0.29) / (0.35 - 0.29))
 end
 
-function setup_network_discretization()
-    dim = 2 # depth and time
-    chain = Chain(Dense(dim, 32, tanh), Dense(32, 32, tanh), Dense(32, 1))
-    # chain = Chain(Dense(dim, 32, σ), Dense(32,32, σ), Dense(32, 1)) # 2 input, 2 hidden, 1 output, sigmoid activation
-
-    discretization = PhysicsInformedNN(
-        chain, QuadratureTraining(;
-            batch = 2000, # 1000
-            abstol = 1e-5, # e-5
-            reltol = 1e-5, # e-5
-        )
-    )
-    return discretization
-end
-
 function get_sensor_values(df, date=nothing)
     if isnothing(date)
         date = DateTime("2024-12-01T00:00:00")
@@ -65,8 +81,7 @@ function get_sensor_values(df, date=nothing)
     return collect(row[1, [:"sm_0.050", :"sm_0.200", :"sm_0.500", :"sm_1.000"]])
 end
 
-function load_moisture_profile(station_dir, date=nothing)
-    df = preprocess(station_dir)
+function load_moisture_profile(df, date=nothing)
     sensor_values = get_sensor_values(df, date)
     sensor_depths = [0.05, 0.20, 0.5, 1.0]
     itp = interpolate((sensor_depths,), sensor_values, Gridded(Linear()))
@@ -80,35 +95,46 @@ function predict_moisture_profile(phi, res, duration)
     return depths, moisture
 end
 
+function setup_network_discretization()
+    dim = 2 # depth and time
+    chain = Chain(Dense(dim, 32, tanh), Dense(32, 32, tanh), Dense(32, 32, tanh), Dense(32, 1))
+    # chain = Chain(Dense(dim, 32, tanh), Dense(32, 32, tanh), Dense(32, 1))
+
+    discretization = PhysicsInformedNN(
+        chain, QuadratureTraining(;
+            batch = 2000, # 1000
+            abstol = 1e-5, # e-5
+            reltol = 1e-5, # e-5
+        )
+    )
+    return discretization
+end
+
 function setup_conditions(θ, z, t, Dz, duration, sensor_profile, future_profile=nothing)
     z_ic = range(0.0, 1.0, length=50)
     ic_points = [ θ(zi, 0.0) ~ sensor_profile(zi) for zi in z_ic ]
-    data_points = [θ(zi,1800.0) ~ future_profile(zi) for zi in z_ic]
+    future_sample_points = [θ(zi,(0.5 * duration)) ~ future_profile(zi) for zi in z_ic]
     bcs = [
-        θ(0, t) ~ 0.15 * (t <1800) + 0.13 * (t >=1800) # 15,13top bc
+        θ(0, t) ~ 0.15 * (t <1800) + 0.13 * (t >=1800)
         θ(1.0, t) ~ 0.25 
-        # θ(0,t) ~ 0.10 # dry top
-        # Dz(θ(1.0, t)) ~ -K_simple(θ(1.0, t)) # free draingage
         ]
-    ret = vcat(bcs, ic_points, data_points)
-    # ret = vcat(bcs, ic_points)
+    ret = vcat(bcs, ic_points, future_sample_points)
     domains = [z ∈ (0.0, 1.0), t ∈ (0.0, duration)]
-    # domains = [z ∈ (0.0, 1.0), t ∈ (0.0, 86400.0)]
     return ret, domains
 end
 
-function solve_pinn(station_dir=nothing, duration=3600.0, date=nothing)
+function solve_pinn(df, duration=3600.0, date=nothing)
     θr, θs, α, n, m, K_sat =0.078, 0.43, 3.6, 1.56, 0.359, 2.9e-5
     @parameters z t
     @variables θ(..)
     Dz = Differential(z)
     Dt = Differential(t)
 
-    eq = Dt(θ(z, t)) ~ Dz(K_simple(θ(z, t)) * Dz(θ(z, t))) - K_simple(θ(z, t)) * 1.0
-    # eq = Dt(θ(z, t)) ~ Dz(D_eff(θ(z, t)) * Dz(θ(z, t))) - K_simple(θ(z, t)) * 1.0
+    # eq = Dt(θ(z, t)) ~ Dz(K_simple(θ(z, t)) * Dz(θ(z, t))) - K_simple(θ(z, t)) * 1.0
+    eq = Dt(θ(z, t)) ~ Dz(D_eff(θ(z, t)) * Dz(θ(z, t))) - K_simple(θ(z, t)) * 1.0
 
-    sensor_profile = load_moisture_profile(station_dir, date)
-    future_profile = load_moisture_profile(station_dir, date + Month(1))
+    sensor_profile = load_moisture_profile(df, date)
+    future_profile = load_moisture_profile(df, date + Month(1))
     bcs, domains = setup_conditions(θ, z, t, Dz, duration, sensor_profile, future_profile)
 
     discretization = setup_network_discretization()
@@ -116,16 +142,18 @@ function solve_pinn(station_dir=nothing, duration=3600.0, date=nothing)
     prob = discretize(pde_system, discretization)
 
     opt = LBFGS(linesearch=LineSearches.BackTracking())
-    res = solve(prob, opt, maxiters = 1000) # 1000 to try for more concrete sol but 500 for dev
+    res = solve(prob, opt, maxiters = 1000) # 1000
     phi = discretization.phi
 
     pred_depths, pred_moisture = predict_moisture_profile(phi, res, duration)
-    visualize_pred_profile(pred_depths, pred_moisture)
-    visualize_solution(phi, res, duration)
+    plot_pred_profile(pred_depths, pred_moisture)
+    plot_solution(phi, res, duration)
+    plot_moisture_comparison(phi, res, df, date, duration)
     print("done")
 end
 
 # station_dir = "data/XMS-CAT/Pessonada"
+# date = DateTime("2024-12-01T00:00:00")
 # df = preprocess(station_dir)
-solve_pinn(station_dir, 3600.0, DateTime("2024-12-01T00:00:00"))
-# time in seconds 3600 = 1hr, 86400 = 1day, "random" for random date
+#
+solve_pinn(df, (3600.0 * 100), date)

@@ -213,11 +213,11 @@ end
 
 # Example usage
 #
-station_dir = "data/XMS-CAT/Pessonada" # find a station
+# station_dir = "data/XMS-CAT/Pessonada" # find a station
 # station_dir = "data/XMS-CAT/Garriguella"
 # station_dir = "data/XMS-CAT/LosCoscolls"
-df = preprocess(station_dir)
-plots = basic_plots(df)
+# df = preprocess(station_dir)
+# plots = basic_plots(df)
 # plot_r = plot_raw(df)
 # plot_p = plot_rainfall(df)
 
