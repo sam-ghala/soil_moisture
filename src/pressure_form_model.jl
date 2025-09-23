@@ -32,12 +32,22 @@ function plot_moisture_comparison(phi, res, df, date, duration)
     end
     # plot predicted data
     for i in 1:4
-        pred_moisture = [first(phi([depths[i], t], res.u)) for t in time_points]
+        ψ_pred = [first(phi([depths[i], t], res.u)) for t in time_points]
+        # ψ_actual = -exp.(ψ_pred)
+        pred_moisture = ψ_θ.(ψ_pred)
         plot!(plt, hours, pred_moisture, 
               label="Predicted $(depths[i])m", color=colors[i], lw=2, 
               linestyle=:dash, marker=:circle, markersize=3)
     end
     display(plt)
+end
+
+function predict_moisture_profile(phi, res, duration)
+    depths = 0.0:0.05:1.0 # every 5cm 
+    ψ_values = [first(phi([z, duration], res.u)) for z in depths]
+    ψ_actual = -exp.(ψ_values)
+    moisture = ψ_θ.(ψ_actual)
+    return depths, moisture
 end
 
 function get_sensor_values(df, date=nothing)
@@ -62,35 +72,30 @@ function load_moisture_profile(df, date=nothing)
     return x -> etp(clamp(x, 0.0, 1.0))
 end
 
-function predict_moisture_profile(phi, res, duration)
-    depths = 0.0:0.05:1.0 # every 5cm 
-    moisture = [first(phi([z, duration], res.u)) for z in depths]
-    return depths, moisture
-end
-
 function plot_solution(phi, res, duration, α=1.0)
     z_grid = 0.0:0.01:1.0
     t_grid = 0.0:(duration/200):duration
     ψ_predict = [first(phi([z, t], res.u)) for z in z_grid, t in t_grid]
     ψ_dimensional = ψ_predict ./ α
+    # h_pred = -exp.(ψ_predict)
+    # θ_predict = ψ_θ.(h_pred)
     θ_predict = ψ_θ.(ψ_dimensional)
-    # plt = heatmap(t_grid ./ 3600, z_grid, θ_predict, yflip=true, color=:blues, xlabel="Time", ylabel="Depth", title="Moisture Content from Pressure Solution")
-    plt1 = heatmap(t_grid ./ 3600, z_grid, θ_predict, 
+    hours = t_grid ./ 3600
+    # hours = t_grid .* (duration/3600)
+    plt1 = heatmap(hours, z_grid, θ_predict, 
                    yflip=true, color=:blues, 
                    xlabel="Time (hours)", ylabel="Depth (m)", 
                    title="Moisture Content",
                    clim=(0.05, 0.45))
-    
-    # Plot pressure head
-    plt2 = heatmap(t_grid ./ 3600, z_grid, ψ_predict, 
+
+    plt2 = heatmap(hours, z_grid, ψ_predict, 
                    yflip=true, color=:viridis,
                    xlabel="Time (hours)", ylabel="Depth (m)", 
                    title="Pressure Head (m)",
                    clim=(-10, 0))
     
-    # plot(plt1, plt2, layout=(1,2), size=(1200, 400))
-    # display(plt1)
-    display(plt2)
+    p = plot(plt1, plt2, layout=(1,2), size=(1200, 400))
+    display(p)
 end
 
 function ψ_θ(ψ_val, θr=0.078, θs=0.43, α=3.6, n=1.56, m=0.359)
@@ -139,7 +144,7 @@ function setup_network_discretization(profile=:development)
     return discretization
 end
 
-function setup_conditions(ψ, z, t, duration, sensor_profile)
+function setup_conditions(ψ, z, t, Dz, duration, sensor_profile)
     # 0.15 dry on top , 0.27 wet on bottom
     ψ_bottom = θ_ψ(0.27)
     t_bc = range(0.0, duration, length=20)
@@ -152,13 +157,14 @@ function setup_conditions(ψ, z, t, duration, sensor_profile)
         push!(ic_points, ψ(zi, 0.0) ~ ψ_init)
     end
     for ti in t_bc
-        θ_surface = 0.15 + 0.005 * (ti / duration)
+        θ_surface = 0.15 - 0.005 * (ti / duration)
         ψ_surface = θ_ψ(θ_surface)
         push!(bcs, ψ(0.0, ti) ~ ψ_surface)
         push!(bcs, ψ(1.0, ti) ~ ψ_bottom)
+        # push!(bcs, Dz(ψ(1.0, t)) ~ 0.0)
     end
     ret = vcat(bcs, ic_points)
-    domains = [z ∈ (0.0, 1.0), t ∈ (0.0, 1.0)] # duration instead of t 1.0
+    domains = [z ∈ (0.0, 1.0), t ∈ (0.0, duration)] # duration instead of t 1.0
     return ret, domains
 end
 
@@ -194,7 +200,13 @@ end
 
 function solve_pinn(df, duration=3600.0, date=nothing, profile=:development; 
                     model_path::Union{Nothing,String}=nothing, save_model::Bool=true)
-    θr, θs, α, n, m, K_sat =0.078, 0.43, 3.6, 1.56, 0.359, 2.9e-5
+    θr, θs, α, n, m, K_sat =0.078, 0.43, 3.6, 1.56, 0.359, 2.9e-6 # 5
+    profiles = Dict(
+        :minimal => ("min", 100, 20),
+        :development => ("dev", 200, 50),
+        :production => ("prod", 1000, 100)
+    )
+    model_name, maxiters, print_every = profiles[profile]
     @parameters z t
     @variables ψ(..)
     Dz = Differential(z)
@@ -202,18 +214,20 @@ function solve_pinn(df, duration=3600.0, date=nothing, profile=:development;
     ϵ = 1e-10
     # Richards Equation in Pressure form
     ψ_actual = -exp(ψ(z,t))
-    h_pos = -ψ_actual  # Positive value for calculations
+    h_pos = -ψ_actual
     Se_vg = (1 + (α * h_pos)^n)^(-m)
     Se = 0.01 + 0.98 * Se_vg
     Se_1m = Se^(1/m)
     K_ψ = K_sat * sqrt(Se) * (1 - (1 - Se_1m)^m)^2
     C_base = (θs - θr) * α * n * m * (α * h_pos)^(n-1) * (1 + (α * h_pos)^n)^(-m-1)
-    C_min = 1e-5
+    C_min = 1e-9 # 5
     C_ψ = C_base + C_min
+
     eq = (1/duration) * C_ψ * (-exp(ψ(z,t))) * Dt(ψ(z,t)) ~ Dz(K_ψ * (-exp(ψ(z,t)) * Dz(ψ(z,t)) + 1.0))
+    # eq = C_ψ * (-exp(ψ(z,t))) * Dt(ψ(z,t)) ~ Dz(K_ψ * (-exp(ψ(z,t)) * Dz(ψ(z,t)) + 1.0))
 
     sensor_profile = load_moisture_profile(df, date)
-    bcs, domains = setup_conditions(ψ, z, t, duration, sensor_profile)
+    bcs, domains = setup_conditions(ψ, z, t, Dz, duration, sensor_profile)
 
     discretization = setup_network_discretization(profile) # :minimal, :development, :production
     @named pde_system = PDESystem(eq, bcs, domains, [z, t], ψ(z, t))
@@ -222,11 +236,8 @@ function solve_pinn(df, duration=3600.0, date=nothing, profile=:development;
     if !isnothing(model_path) && isfile(model_path)
         println("Loading pretrained model from $model_path")
         saved_data = BSON.load(model_path)
-        if haskey(saved_data, :save_data)
-            saved_data = saved_data[:save_data]
-        end
-        if haskey(saved_data, :params)
-            saved_params = saved_data[:params]
+        if haskey(saved_data[:save_data], :params)
+            saved_params = saved_data[:save_data][:params]
             if isa(saved_params, ComponentArray)
                 saved_params = Vector(saved_params)
             end
@@ -247,11 +258,11 @@ function solve_pinn(df, duration=3600.0, date=nothing, profile=:development;
     end
 
     opt = LBFGS(linesearch=LineSearches.BackTracking())
-    res, loss_history = solve_with_monitoring(prob, opt, maxiters=200, print_every=20)
+    res, loss_history = solve_with_monitoring(prob, opt, maxiters=maxiters, print_every=print_every)
     phi = discretization.phi
 
     if save_model && res.objective < 10.0
-        savepath = "pinn_model_$(duration/3600)hr.bson" # rewrite current model if I run it on same 
+        savepath = isnothing(model_path) ? "pinn_$(model_name)_$(duration/3600)hr.bson" : "pinn_transfer_$(model_name)_$(duration/3600)hr.bson"# rewrite current model if I run it on same 
         params_to_save = isa(res.u, ComponentArray) ? Vector(res.u) : res.u
         save_data = Dict(
             :params => params_to_save,
@@ -262,15 +273,16 @@ function solve_pinn(df, duration=3600.0, date=nothing, profile=:development;
     end
     # plots
     plot_solution(phi, res, duration)
+    # depths, moisture = predict_moisture_profile(phi, res, duration)
+    # plot_pred_profile(depths, moisture)
+    plot_moisture_comparison(phi, res, df, date, duration)
 end
 
 # station_dir = "data/XMS-CAT/Pessonada"
 # date = DateTime("2024-12-01T00:00:00")
 # df = preprocess(station_dir)
+# rain = 0.0
+@time solve_pinn(df, (3600.0 * 1), date, :development)
+@time solve_pinn(df, (3600.0 * 1), date, :development, model_path="pinn_transfer_dev_1.0hr.bson")
 
-# @time solve_pinn(df, (3600.0 * 1), date, :development)
-# @time solve_pinn(df, (3600.0 * 1000), date, :development, model_path="pinn_model_100.0hr.bson")
 
-
-
-# bike ride for goals, get food, continue bike ride, get food, stop by at home 

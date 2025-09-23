@@ -14,7 +14,7 @@ include("plots.jl")
 include("num_methods.jl")
 include("moisture_form_model.jl")
 include("pressure_form_model.jl")
-# include("irrigate.jl")
+include("irrigate.jl")
 
 export list_station_files, var_depth_tokens, read_stm, merge_station_data, load_station_data, avg_sm, soil_params, avg_ts, sm_grad, preprocess
 export plot_raw, plot_rainfall, plot_box, plot_violin, plot_line, basic_plots, avg_soil_moisture, plot_soil_retention_curve, plot_hydraulic_conductivity, plot_moisture_grad
