@@ -1,10 +1,8 @@
-Random.seed!(42)
-# addprocs(4)  # Use multiple cores
+# Random.seed!(42)
 
 function plot_solution(phi, res, duration)
     z_grid = 0.0:0.01:1.0
     t_grid = 0.0:(duration/200):duration
-    # t_grid = 0.0:1000:86400.0
     u_predict = [first(phi([z, t], res.u)) for z in z_grid, t in t_grid]
     plt = heatmap(t_grid, z_grid, u_predict, yflip=true, color=:blues, xlabel="Time", ylabel="Depth")
     display(plt)
@@ -29,7 +27,6 @@ function plot_moisture_comparison(phi, res, df, date, duration)
     # get sensor data for date range
     end_date = date + Second(duration)
     sensor_data = filter(row -> date <= row.timestamp <= end_date, df)
-    sm_data = []
     # plot
     plt = plot(title = "Predicted vs. Observed Moisture Data",
                 xlabel = "Time (hours)",
@@ -48,23 +45,6 @@ function plot_moisture_comparison(phi, res, df, date, duration)
               linestyle=:dash, marker=:circle, markersize=3)
     end
     display(plt)
-end
-
-function K_simple(θ_val)
-    K_dry = 1e-8
-    K_wet = 1e-5
-    return K_dry + (K_wet - K_dry) * ((θ_val - 0.29) / (0.35 - 0.29))^2
-end
-
-function ψ(θ_val)
-    θe = (θ_val - θr) / (θs - θr)
-    ψ = (1/α) * ((θe^(-1/m) - 1)^(1/n))
-    return ψ
-end
-
-function D_eff(θ_val)
-    K_val = K_simple(θ_val)
-    return K_val * (1.0 + (θ_val - 0.29) / (0.35 - 0.29))
 end
 
 function get_sensor_values(df, date=nothing)
@@ -95,16 +75,40 @@ function predict_moisture_profile(phi, res, duration)
     return depths, moisture
 end
 
+function diagnose_convergence(phi, res, duration)
+    test_times = [0.0, duration/2, duration]
+    for t_test in test_times
+        profile = [first(phi([z, t_test], res.u)) for z in 0:0.1:1]
+        println("t=$t_test: mean=$(mean(profile)), std=$(std(profile)), range=$(maximum(profile)-minimum(profile))")
+    end
+end
+
+function K_simple(θ_val)
+    K_dry = 1e-8
+    K_wet = 1e-5
+    return K_dry + (K_wet - K_dry) * ((θ_val - 0.29) / (0.35 - 0.29))^2
+end
+
+function ψ(θ_val, θr=0.078, θs=0.43, α=3.6, n=1.56, m=0.359)
+    θe = (θ_val - θr) / (θs - θr)
+    ψ = (1/α) * ((θe^(-1/m) - 1)^(1/n))
+    return ψ
+end
+
+function D_eff(θ_val, θr=0.078, θs=0.43, α=3.6, n=1.56, m=0.359)
+    K_val = K_simple(θ_val)
+    return K_val * (1.0 + (θ_val - 0.29) / (0.35 - 0.29))
+end
+
 function setup_network_discretization()
     dim = 2 # depth and time
     chain = Chain(Dense(dim, 32, tanh), Dense(32, 32, tanh), Dense(32, 32, tanh), Dense(32, 1))
-    # chain = Chain(Dense(dim, 32, tanh), Dense(32, 32, tanh), Dense(32, 1))
 
     discretization = PhysicsInformedNN(
         chain, QuadratureTraining(;
-            batch = 2000, # 1000
-            abstol = 1e-5, # e-5
-            reltol = 1e-5, # e-5
+            batch = 2000,
+            abstol = 1e-5,
+            reltol = 1e-5,
         )
     )
     return discretization
@@ -130,8 +134,7 @@ function solve_pinn(df, duration=3600.0, date=nothing)
     Dz = Differential(z)
     Dt = Differential(t)
 
-    # eq = Dt(θ(z, t)) ~ Dz(K_simple(θ(z, t)) * Dz(θ(z, t))) - K_simple(θ(z, t)) * 1.0
-    eq = Dt(θ(z, t)) ~ Dz(D_eff(θ(z, t)) * Dz(θ(z, t))) - K_simple(θ(z, t)) * 1.0
+    eq = Dt(θ(z, t)) ~ Dz(D_eff(θ(z, t)) * Dz(θ(z, t))) + Dz(K(θ(z, t)))#- K_simple(θ(z, t)) * 1.0
 
     sensor_profile = load_moisture_profile(df, date)
     future_profile = load_moisture_profile(df, date + Month(1))
@@ -145,10 +148,11 @@ function solve_pinn(df, duration=3600.0, date=nothing)
     res = solve(prob, opt, maxiters = 1000) # 1000
     phi = discretization.phi
 
-    pred_depths, pred_moisture = predict_moisture_profile(phi, res, duration)
-    plot_pred_profile(pred_depths, pred_moisture)
+    # pred_depths, pred_moisture = predict_moisture_profile(phi, res, duration)
+    # plot_pred_profile(pred_depths, pred_moisture)
     plot_solution(phi, res, duration)
-    plot_moisture_comparison(phi, res, df, date, duration)
+    # plot_moisture_comparison(phi, res, df, date, duration)
+    # diagnose_convergence(phi, res, duration)
     print("done")
 end
 
@@ -156,4 +160,9 @@ end
 # date = DateTime("2024-12-01T00:00:00")
 # df = preprocess(station_dir)
 #
-solve_pinn(df, (3600.0 * 100), date)
+# @time solve_pinn(df, (3600.0 * 1), date)
+# solve_pinn(df, (3600.0 * 3), date)
+# solve_pinn(df, (3600.0 * 10), date)
+
+### 
+    # eq = Dt(θ(z, t)) ~ Dz(K_simple(θ(z, t)) * Dz(θ(z, t))) - K_simple(θ(z, t)) * 1.0
