@@ -175,8 +175,19 @@ function preprocess(station_dir::AbstractString)
     return df
 end
 
+function load_station_names(basepath="data")
+    station_names = String[]
+    for network in filter(isdir, readdir(basepath; join=true))
+        for station in filter(isdir, readdir(network; join=true))
+            push!(station_names, station)
+        end
+    end
+    return station_names
+end
+
 # Example usage:
 # station_dir = "data/XMS-CAT/Pessonada"
 # station_dir = "data/test_station"
+# station_names = load_station_names()
 # df = load_station_data(station_dir)
 # df = preprocess(station_dir)

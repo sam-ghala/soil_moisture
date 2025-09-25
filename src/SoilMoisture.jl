@@ -7,6 +7,7 @@ using DomainSets
 import Interpolations: interpolate, Gridded, Linear, extrapolate, Line
 using Random, Flux
 using BSON: @save, @load
+using Glob
 
 
 include("data.jl")

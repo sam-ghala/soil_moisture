@@ -282,7 +282,7 @@ end
 # date = DateTime("2024-12-01T00:00:00")
 # df = preprocess(station_dir)
 # rain = 0.0
-@time solve_pinn(df, (3600.0 * 1), date, :development)
-@time solve_pinn(df, (3600.0 * 1), date, :development, model_path="pinn_transfer_dev_1.0hr.bson")
+# @time solve_pinn(df, (3600.0 * 1), date, :development)
+# @time solve_pinn(df, (3600.0 * 1), date, :development, model_path="pinn_transfer_dev_1.0hr.bson")
 
 
