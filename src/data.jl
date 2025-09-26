@@ -34,7 +34,15 @@ function var_depth_tokens(filenames::AbstractVector{<:AbstractString})::Vector{S
         parts = split(basename(f), "_")
         if length(parts) >= 5
             var, depth1 = parts[4], parts[5]
-            push!(var_depth, string(var, "_", @sprintf("%.3f", parse(Float64, depth1))))
+            depth_tmp = parse(Float64, depth1)
+            if round(Int, depth_tmp) != 0
+                name = string(var, "_", string(round(Int, depth_tmp)), "_000")
+            else
+                col_name = string(var, "_", @sprintf("%.3f", parse(Float64, depth1)))
+                name = col_name[1:3] * col_name[6:end]
+                name[end-2:end] == "000" ? name = name[1:end-3] * "_050" : nothing
+            end
+            push!(var_depth, name)
         end
     end
     return var_depth
@@ -75,6 +83,7 @@ function read_stm(file_path::String)::DataFrame
     deleteat!(df, bad_ix)
     df.timestamp = DateTime.(string.(df.date_str, " ", df.time_str), dateformat"yyyy/mm/dd HH:MM")
     df.theta = coalesce.(parse.(Float64, df.theta), NaN)
+    # df.theta = coalesce.(x -> x isa AbstractString ? parse(Float64, x) : Float64(x), df.theta, NaN)
     sort!(df, :timestamp)
     return select(df, [:timestamp, :theta]) 
 end
@@ -151,20 +160,30 @@ end
 
 function avg_sm!(df::DataFrame)
     # df[!, :avg_sm] = mean.(eachrow(df[!, [:"sm_0.050", :"sm_0.200", :"sm_0.500", :"sm_1.000"]]))
-    cols = [:"sm_0.050", :"sm_0.200", :"sm_0.500", :"sm_1.000"]
+    cols = names(df, r"^sm")
     df[!, :avg_sm] = sum.(eachrow(df[!, cols])) ./ length(cols)
 end
 
 function avg_ts!(df::DataFrame)
-    cols = [:"ts_0.050", :"ts_0.200", :"ts_0.500", :"ts_1.000"]
+    cols = names(df, r"^ts")
+    if isempty(cols)
+        return nothing
+    end
     df[!, :avg_ts] = sum.(eachrow(df[!, cols])) ./ length(cols)
 end
 
 function sm_grad!(df::DataFrame)
-    cols = [:"sm_0.050", :"sm_0.200", :"sm_0.500", :"sm_1.000"]
-    df[!, :grad_05_20] = (df[!,cols[1]] - df[!,cols[2]]) / (0.200 - 0.050)
-    df[!, :grad_20_50] = (df[!,cols[2]] - df[!,cols[3]]) / (0.500 - 0.200)
-    df[!, :grad_50_1] = (df[!,cols[3]] - df[!,cols[4]]) / (1.000 - 0.500)
+    cols = names(df, r"^sm")
+    col_values = Any[match(r"(-?\d+)_?(\d*)$", name) for name in cols]
+    for i in eachindex(col_values)
+        whole, frac = col_values[i].captures
+        digits = whole * frac
+        col_values[i] = parse(Int, digits) / 1000
+    end
+    for i in 1:length(col_values)-1
+        col_name = string("grad_", col_values[i], "_", col_values[i+1])
+        df[!, Symbol(col_name)] = (df[!,cols[i]] - df[!,cols[i+1]]) / (col_values[i] - col_values[i+1])
+    end
 end
 
 function preprocess(station_dir::AbstractString)
@@ -185,9 +204,18 @@ function load_station_names(basepath="data")
     return station_names
 end
 
+function load_all_stations()
+    station_names = load_station_names()
+    # df = load_station_data(station_dir)
+    station_data = Dict()
+    for s in station_names
+        println(s)
+        station_data[s] = preprocess(s)
+    end
+    return station_data
+end
+
 # Example usage:
-# station_dir = "data/XMS-CAT/Pessonada"
-# station_dir = "data/test_station"
-# station_names = load_station_names()
-# df = load_station_data(station_dir)
-# df = preprocess(station_dir)
+station_dir = "data/XMS-CAT/Pessonada"
+df = preprocess(station_dir)
+station_names = load_station_names()
