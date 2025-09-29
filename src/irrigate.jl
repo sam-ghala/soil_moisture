@@ -14,15 +14,12 @@ crops = Dict(
 )
 
 function root_zone_avg!(df_sensor, df_irr, CROPS)
-    # 
     df_irr[!, :θ_avg_shallow] = zeros(nrow(df_irr))
     df_irr[!, :θ_avg_medium] = zeros(nrow(df_irr))
     df_irr[!, :θ_avg_deep] = zeros(nrow(df_irr))
-    #
+
     for (idx, row) in enumerate(eachrow(df_irr))
-        # println(idx, row.timestamp)
         f = load_moisture_profile(df_sensor, row.timestamp)
-    #
         for (crop_type, info) in CROPS
             avg_moisture, _ = quadgk(f, 0.0, info.depth) 
             avg_moisture /= (info.depth - 0.0)
@@ -46,8 +43,20 @@ function θ_trigger_threshold!(df_irr, crops) # true is needs irrigation
     df_irr[!, :θ_deep_trigger] .= df_irr.θ_avg_deep .< crops["deep"].θ_trigger
 end
 
+function get_same_col_names(df, type)
+    var_groups = Dict{String, Vector{String}}()
+    for col in names(df)[2:end] 
+        var_type = split(col, r"[_\d]")[1]
+        if !haskey(var_groups, var_type)
+            var_groups[var_type] = String[]
+        end
+        push!(var_groups[var_type], col)
+    end
+    return var_groups[type]
+end
+
 function plot_irrigate(df, df_irr)
-    depth_labels = ["sm_0.050", "sm_0.200", "sm_0.500", "sm_1.000"]
+    depth_labels = get_same_col_names(df, "sm")
     colors = reverse(palette(:viridis, 4))
     plt = plot(size=(900, 400), 
                 title = "SM Threshold",
@@ -78,13 +87,13 @@ end
 # station_dir = "data/XMS-CAT/Pessonada"
 # df_sensor = preprocess(station_dir)
 # df_irr = build_irr_df(df_sensor, crops)
-# station_names = load_station_names()
-# for s in station_names
-#     println(s)
-#     df_sensor = preprocess(s)
-#     df_irr = build_irr_df(df_sensor, crops)
-#     plot_irrigate(df_sensor, df_irr)
-# end
+station_data = load_all_stations()
+
+for (k,v) in station_data
+    println(k)
+    df_irr = build_irr_df(v, crops)
+    plot_irrigate(v, df_irr)
+end
 
 
 ## little helper function, need an easier way to visualize when crops below θ threshold

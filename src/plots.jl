@@ -42,7 +42,7 @@ function plot_rainfall(df::DataFrame)
     plt = Plots.plot(; size = (900, 400), xlabel = "Time", ylabel= "θ (m^3/m^3)",
                 title = "Rainfall and 0.05m Soil Moisture over Time")
     Plots.plot!(plt, df.timestamp, df[!, 3], label = String("0.05"), color = "saddlebrown",lw=1)
-    Plots.bar!(twinx(plt), df.timestamp, df[!, Symbol("p_-2.000")]; 
+    Plots.bar!(twinx(plt), df.timestamp, df[!, Symbol("p_-2_000")]; 
         bar_width = 1,
         linecolor = "dodgerblue2",
         fillalpha = 1,
@@ -82,11 +82,12 @@ function plot_violin(df::DataFrame, cols::Vector{String}, xlab::String, ylab::St
     return plt
 end
 
-function plot_line(df::DataFrame, cols::Vector{String}, xlab::String, ylab::String)
+function plot_line(df::DataFrame, cols::Vector{String}, xlab::String, ylab::String; title=nothing)
+    isnothing(title) ? title = ylab * " vs. " * xlab : title
     plt = Plots.plot(size=(900, 400), 
               xlabel=xlab, 
               ylabel=ylab,
-              title=ylab * " vs. " * xlab)
+              title= title)
     
     colors = reverse(palette(:viridis, length(cols))) # :viridis :plasma :inferno
     for (i, col) in enumerate(cols)
@@ -112,7 +113,7 @@ function basic_plots(df::DataFrame) # returns Vector{Plots.Plot}
         end
         push!(var_groups[var_type], col)
     end
-    println(var_groups)
+    # println(var_groups)
     haskey(var_groups, "sm") && (var_groups["Soil Moisture (m³/m³)"] = pop!(var_groups, "sm"))
     # var_groups["Soil Moisture (m^3/m^3)"] = pop!(var_groups, "sm")
     haskey(var_groups, "ta") && (var_groups["Air Temperature (°C)"] = pop!(var_groups, "ta"))
@@ -226,3 +227,12 @@ end
 # plot_soil_retention_curve()
 # plot_hydraulic_conductivity()
 # plot_moisture_grad(df)
+station_data = load_all_stations()
+
+# rewrite the plotting functions above to get what actually matters 
+
+for (k,v) in station_data
+    # println(first(v,5))
+    cols = get_same_col_names(v, "sm")
+    plot_line(v, cols, "time", "moisture", title=k)
+end

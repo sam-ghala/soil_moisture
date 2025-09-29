@@ -186,8 +186,36 @@ function sm_grad!(df::DataFrame)
     end
 end
 
+function clean!(df)
+    # trim sm, ts, ta, p, within realistic bounds 
+    bounds = Dict(
+        "sm" => (0, 0.6),
+        "ts" => (-10, 60),
+        "ta" => (-40, 100),
+        "p" => (0, 200)
+    )
+    for col in names(df)
+        for (prefix, (low, high)) in bounds
+            if startswith(col, prefix)
+                df[!, col] = ifelse.(
+                    ismissing.(df[!, col]) .| (df[!, col] .< low) .| (df[!, col] .> high),
+                    missing,
+                    df[!, col],
+                )
+            end
+        end
+    end
+end
+
+function handle_missing!(df)
+    dropmissing!(df)
+    return df
+end
+
 function preprocess(station_dir::AbstractString)
     df = load_station_data(station_dir)
+    clean!(df)
+    handle_missing!(df)
     avg_sm!(df)
     avg_ts!(df)
     sm_grad!(df)
@@ -206,16 +234,15 @@ end
 
 function load_all_stations()
     station_names = load_station_names()
-    # df = load_station_data(station_dir)
     station_data = Dict()
     for s in station_names
-        println(s)
         station_data[s] = preprocess(s)
     end
     return station_data
 end
 
 # Example usage:
-station_dir = "data/XMS-CAT/Pessonada"
-df = preprocess(station_dir)
-station_names = load_station_names()
+# station_dir = "data/XMS-CAT/Pessonada"
+# df = preprocess(station_dir)
+# station_names = load_station_names()
+# all_station_data = load_all_stations()

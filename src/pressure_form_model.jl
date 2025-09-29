@@ -14,7 +14,7 @@ end
 function plot_moisture_comparison(phi, res, df, date, duration)
     # plot avg of real soil data, and plot avg or predicted soil data
     depths = [0.05, 0.20, 0.50, 1.0]
-    depth_labels = ["sm_0.050", "sm_0.200", "sm_0.500", "sm_1.000"]
+    depth_labels = get_same_col_names(df, "sm")
     time_points = 0:3600:duration
     colors = reverse(palette(:viridis, 4))
     # get sensor data for date range
@@ -61,12 +61,22 @@ function get_sensor_values(df, date=nothing)
         date = DateTime(date)
     end
     row = filter(r -> r.timestamp == date, df)
-    return collect(row[1, [:"sm_0.050", :"sm_0.200", :"sm_0.500", :"sm_1.000"]])
+    # return collect(row[1, [:"sm_0.050", :"sm_0.200", :"sm_0.500", :"sm_1.000"]])
+    sm_cols = Symbol.(get_same_col_names(df, "sm"))
+    return collect(row[1, sm_cols])
+end
+
+function sm_name_to_depth(name::AbstractString)
+    digits = replace(name, "sm_" => "", "_" => "")
+    return parse(Float64, digits) / 1000
 end
 
 function load_moisture_profile(df, date=nothing)
     sensor_values = get_sensor_values(df, date)
-    sensor_depths = [0.05, 0.20, 0.5, 1.0]
+    sensor_depths = sm_name_to_depth.(get_same_col_names(df, "sm"))
+    if length(sensor_depths) == 1
+        return x -> sensor_values[1] + (0.35 - sensor_values[1]) * (x - 0.05) / (1.0 - 0.05)
+    end
     itp = interpolate((sensor_depths,), sensor_values, Gridded(Linear()))
     etp = extrapolate(itp, Line())
     return x -> etp(clamp(x, 0.0, 1.0))
