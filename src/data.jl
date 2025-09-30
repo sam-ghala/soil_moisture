@@ -65,7 +65,6 @@ Read one CAT-XMS `.stm` file and return a tidy table with `:timestamp` and `:the
 """
 function read_stm(file_path::String)::DataFrame
     df = CSV.read(file_path, DataFrame; 
-                    # skipto=2,
                     delim = ' ', 
                     ignorerepeated = true, 
                     ignoreemptyrows=true,
@@ -79,7 +78,6 @@ function read_stm(file_path::String)::DataFrame
     ts  = strip.(string.(df.date_str, " ", df.time_str))
     bad_ix = findall(t -> (try; DateTime(t, fmt); false; catch; true; end), ts)
 
-    # println(bad_ix) # drop bad timestamp rows
     deleteat!(df, bad_ix)
     df.timestamp = DateTime.(string.(df.date_str, " ", df.time_str), dateformat"yyyy/mm/dd HH:MM")
     df.theta = coalesce.(parse.(Float64, df.theta), NaN)
@@ -109,7 +107,6 @@ function merge_station_data(files::AbstractVector{<:AbstractString}, col_names::
     df = read_stm(f1)
     rename!(df, :theta=> col_names[1])
     for (k, file_name) in enumerate(files[2:end])
-        # println(k, files[k] * " " * col_names[k])
         d = read_stm(file_name)
         rename!(d, :theta => col_names[k + 1])
         df = outerjoin(df, d, on=:timestamp, makeunique = true)
@@ -153,13 +150,11 @@ function load_station_data(station_dir::AbstractString)::DataFrame
     isdir(station_dir) || throw(ArgumentError("Not a directory: $station_dir"))
     filenames = list_station_files(station_dir)
     col_names = var_depth_tokens(filenames)
-    # print(filenames, col_names)
     df = merge_station_data(filenames, col_names)
     return df
 end
 
 function avg_sm!(df::DataFrame)
-    # df[!, :avg_sm] = mean.(eachrow(df[!, [:"sm_0.050", :"sm_0.200", :"sm_0.500", :"sm_1.000"]]))
     cols = names(df, r"^sm")
     df[!, :avg_sm] = sum.(eachrow(df[!, cols])) ./ length(cols)
 end
@@ -187,7 +182,6 @@ function sm_grad!(df::DataFrame)
 end
 
 function clean!(df)
-    # trim sm, ts, ta, p, within realistic bounds 
     bounds = Dict(
         "sm" => (0, 0.6),
         "ts" => (-10, 60),

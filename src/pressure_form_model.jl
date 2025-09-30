@@ -288,6 +288,8 @@ function solve_pinn(df, duration=3600.0, date=nothing, profile=:development;
     plot_moisture_comparison(phi, res, df, date, duration)
 end
 
+# Example Usage:
+
 # station_dir = "data/XMS-CAT/Pessonada"
 # date = DateTime("2024-12-01T00:00:00")
 # df = preprocess(station_dir)

@@ -87,14 +87,15 @@ end
 # station_dir = "data/XMS-CAT/Pessonada"
 # df_sensor = preprocess(station_dir)
 # df_irr = build_irr_df(df_sensor, crops)
-station_data = load_all_stations()
+# station_data = load_all_stations()
 
-for (k,v) in station_data
-    println(k)
-    df_irr = build_irr_df(v, crops)
-    plot_irrigate(v, df_irr)
-end
+# for (k,v) in station_data
+#     println(k)
+#     df_irr = build_irr_df(v, crops)
+#     plot_irrigate(v, df_irr)
+# end
 
+## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ##
 
 ## little helper function, need an easier way to visualize when crops below θ threshold
 function plot_trigger_line!(plt, df, avg_col, trig_col; base_color=:blue)

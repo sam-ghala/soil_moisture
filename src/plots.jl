@@ -212,11 +212,9 @@ function plot_moisture_grad(df::DataFrame)
     plot_line(df, [:"grad_05_20", :"grad_20_50", :"grad_50_1"], "Time", "∂θ/∂z [m²/m³]")
 end
 
-# Example usage
+# Example usage:
 #
 # station_dir = "data/XMS-CAT/Pessonada" # find a station
-# station_dir = "data/XMS-CAT/Garriguella"
-# station_dir = "data/XMS-CAT/LosCoscolls"
 # df = preprocess(station_dir)
 # plots = basic_plots(df)
 # plot_r = plot_raw(df)
@@ -227,12 +225,11 @@ end
 # plot_soil_retention_curve()
 # plot_hydraulic_conductivity()
 # plot_moisture_grad(df)
-station_data = load_all_stations()
+# station_data = load_all_stations()
 
 # rewrite the plotting functions above to get what actually matters 
 
-for (k,v) in station_data
-    # println(first(v,5))
-    cols = get_same_col_names(v, "sm")
-    plot_line(v, cols, "time", "moisture", title=k)
-end
+# for (k,v) in station_data
+#     cols = get_same_col_names(v, "sm")
+#     plot_line(v, cols, "time", "moisture", title=k)
+# end
